@@ -11,70 +11,84 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func main(){
-	router := mux.NewRouter()
+func main() {
 
+	router := mux.NewRouter()
 
 	router.HandleFunc("/products/", GetProducts).Methods("GET")
 	router.HandleFunc("/products", InsertProducts).Methods("POST")
-    router.HandleFunc("/products/{productId}", UpdateProducts).Methods("PUT")
-    router.HandleFunc("/products/", DeleteProducts).Methods("DELETE")
+	router.HandleFunc("/products/{productId}", UpdateProducts).Methods("PUT")
+	router.HandleFunc("/products/{productId}", DeleteProducts).Methods("DELETE")
 
-    // serve the app
-    fmt.Println("Server at 8080")
-    log.Fatal(http.ListenAndServe(":8000", router))
+	fmt.Println("Server at 8000")
+	log.Fatal(http.ListenAndServe(":8000", router))
 	http.ListenAndServe(":8000", router)
 
 }
 
 func GetProducts(w http.ResponseWriter, r *http.Request) {
-	var products = []dto.Product{
-		{ProductId: "1", ProductName: "SoccerBall"},
-		{ProductId: "2", ProductName: "AirPump"},
-		{ProductId: "3", ProductName: "Nike Studs"},
+	var products []dto.Product
+	dbCon := ConnectDB()
+	v, err := dbCon.Query("select * from public.products")
+	for v.Next() {
+		var id int
+		var productId string
+		var productName string
+
+		err = v.Scan(&id, &productId, &productName)
+
+		if err != nil {
+			panic(err)
+		}
+
+		products = append(products, dto.Product{ProductId: productId, ProductName: productName})
 	}
 
 	var response = dto.JsonResponse{Type: "success", Data: products}
 
-    json.NewEncoder(w).Encode(response)
-} 
+	json.NewEncoder(w).Encode(response)
+}
 
 func InsertProducts(w http.ResponseWriter, r *http.Request) {
-	var products = []dto.Product{
-		{ProductId: "1", ProductName: "SoccerBall"},
-		{ProductId: "2", ProductName: "Bandages"},
-		{ProductId: "3", ProductName: "Nike Studs"},
-		{ProductId: r.FormValue("ProductId"), ProductName: r.FormValue("ProductName")},
-	}
-	//var product dto.Product
-	//json.NewEncoder(r.Body).Decode(product)
+	var product dto.Product
+	db := ConnectDB()
 	fmt.Println(r.Body)
+	json.NewDecoder(r.Body).Decode(&product)
+	var productId string = product.ProductId
+	var productName string= product.ProductName
 
-	var response = dto.JsonResponse{Type: "success", Data: products}
+	v, err := db.Query("Insert into public.products(productId, productName) values($1,$2);", productId, productName)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("rows affected : ", v)
+	var response = dto.JsonResponse{Type: "success", Message: "inserted the record"}
 
-    json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(response)
 }
 
 func UpdateProducts(w http.ResponseWriter, r *http.Request) {
-	var products = []dto.Product{
-		{ProductId: "1", ProductName: "SoccerBall"},
-		{ProductId: "2", ProductName: r.FormValue("ProductName")},
-		{ProductId: "3", ProductName: "Nike Studs"},
-	}
+	db := ConnectDB()
 
-	var response = dto.JsonResponse{Type: "success", Data: products}
+	params := mux.Vars(r)
+	productId := params["productId"]
 
-    json.NewEncoder(w).Encode(response)
+	db.Query("update public.products set productname = 'Portugal Jersey' where productid = $1",productId);
+
+	var response = dto.JsonResponse{Type: "success", Message: "Updated the record"}
+
+	json.NewEncoder(w).Encode(response)
 }
 
 func DeleteProducts(w http.ResponseWriter, r *http.Request) {
-	var products = []dto.Product{
-		{ProductId: "1", ProductName: "SoccerBall"},
-		//{ProductId: "2", ProductName: "AirPump"},
-		{ProductId: "3", ProductName: "Nike Studs"},
-	}
+	db := ConnectDB()
 
-	var response = dto.JsonResponse{Type: "success", Data: products}
+	params := mux.Vars(r)
+	productId := params["productId"]
 
-    json.NewEncoder(w).Encode(response)
+	db.Query("delete from public.products where productid = $1",productId);
+
+	var response = dto.JsonResponse{Type: "success", Message: "Deleted  the record"}
+
+	json.NewEncoder(w).Encode(response)
 }
