@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"go-crud-postgres/dao"
 	"go-crud-postgres/dto"
 	"log"
 	"net/http"
@@ -28,7 +29,7 @@ func main() {
 
 func GetProducts(w http.ResponseWriter, r *http.Request) {
 	var products []dto.Product
-	dbCon := ConnectDB()
+	dbCon := dao.ConnectDB()
 	v, err := dbCon.Query("select * from public.products")
 	for v.Next() {
 		var id int
@@ -51,7 +52,7 @@ func GetProducts(w http.ResponseWriter, r *http.Request) {
 
 func InsertProducts(w http.ResponseWriter, r *http.Request) {
 	var product dto.Product
-	db := ConnectDB()
+	db := dao.ConnectDB()
 	fmt.Println(r.Body)
 	json.NewDecoder(r.Body).Decode(&product)
 	var productId string = product.ProductId
@@ -68,7 +69,7 @@ func InsertProducts(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateProducts(w http.ResponseWriter, r *http.Request) {
-	db := ConnectDB()
+	db := dao.ConnectDB()
 
 	params := mux.Vars(r)
 	productId := params["productId"]
@@ -81,7 +82,7 @@ func UpdateProducts(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteProducts(w http.ResponseWriter, r *http.Request) {
-	db := ConnectDB()
+	db := dao.ConnectDB()
 
 	params := mux.Vars(r)
 	productId := params["productId"]
